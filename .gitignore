@@ -1,0 +1,21 @@
+# Datos institucionales: NO se suben al repositorio (cláusula de confidencialidad del curso)
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+*.xlsx
+*.xls
+*.csv
+*.parquet
+*.pdf
+*.zip
+
+# Python / entorno
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+.pytest_cache/
+.ipynb_checkpoints/
+.DS_Store
