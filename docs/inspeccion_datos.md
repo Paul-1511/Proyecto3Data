@@ -46,3 +46,25 @@ leyendo los archivos reales. Las fuentes extra del Módulo 4 (encuestas, AIMM, T
 
 ## Pendiente de inspeccionar (parte 2)
 Encuestas de visitante (Antigua, Petén), tabulados de residentes, AIMM (3 archivos), Tikal 2017-2026.
+
+---
+# Parte 2 (29-oct): fuentes restantes y hallazgos adicionales
+
+| # | Hallazgo | Consecuencia |
+|---|----------|--------------|
+| 11 | **La oferta hotelera no es el denominador numérico de la ocupación.** Contra los boletines, (habitaciones disponibles del boletín ÷ 366 ÷ habitaciones de la oferta) va de 0.25 a 1.25 según departamento (Sacatepéquez 1.25, Alta Verapaz 0.25). Los pesos de la oferta dan un índice nacional de ~62 % frente al 71 % del boletín 2024. | No se calcula "habitaciones ocupadas = índice × oferta" ni un índice nacional ponderado por oferta. Solo se pondera para unir Escuintla + Santa Rosa (pesos 65.6 % vs 65.1 % del boletín). Los índices departamentales sí coinciden exactos con el boletín (Sacatepéquez 2024 verificado mes a mes). |
+| 12 | Oferta: en 2026, **31 de 66** combinaciones depto×tipo (47 %) repiten exactamente el valor de 2025, como advierte la guía. En 2023-2025 repiten 3, 5 y 7. | `repite_valor_anio_previo` y `es_corte_parcial`. El corte 2026 no se usa como serie. |
+| 13 | Tikal: `otros ` con espacio final; meses con capitalización mixta. Ceros abr-sep 2020 (cierre por pandemia, 6 meses). Enero 2017 = 0 es dudoso (feb-2017 también bajo). `descripcion_otros = 'sd'` describe la categoría "otros", no ausencia de dato. | Cierres de 2020 = 0 real (marcados `cierre_pandemia`, **supuesto a confirmar con la cátedra**); enero 2017 → NaN (`cero_dudoso`). |
+| 14 | AIMM: el consolidado **no tiene 2023**. El archivo de aerolíneas sí (2023 a abr-2026) y coincide exacto con el consolidado en 48 meses-flujo comunes (2024 y 2025). `Total Mes Aerolínea` es entrada+salida repetido en cada fila. | 2023 y ene-abr 2026 se reconstruyen solo en total (sin segmento). Se descarta `Total Mes Aerolínea`. Los pasajeros incluyen entrada y salida. |
+| 15 | AIMM operaciones: 2026 parcial (ene-abr); cruces (17,738) y Poptún (1,103) en hoja aparte. | Tabla `aimm_operaciones_aux` separada; nunca se suma al tráfico. |
+| 16 | **La migración solo llega a junio de 2026**: de los 10 meses de movilidad, solo 8 tienen también migración (sep-dic 2025 y mar-jun 2026). | El factor de reparto y la validación usan 8 meses, no 10. |
+| 17 | Encuestas: 40 ítems de escala 1-5 en cada una; Antigua trae centinela `-1` en P71 (63 casos) y P11A; las etiquetas de Antigua se derivaron de Petén (la nota metodológica pide verificarlas); 34 % de Antigua sin gasto en Q. | `-1` → NaN. Antigua: 172 de 510 no tienen gasto en Q (`declaro_gasto = False`): **verificar con la cátedra si es filtro o falta**. Categorías de gasto 1-6 sin etiqueta. |
+| 18 | Encuestas: ninguna fila de resumen es "total del destino". Solo segmentos (procedencia, pernocta, lugar y cuota en Petén). | `n_bajo` marca segmentos con menos de 30 casos. |
+| 19 | Residentes: 640 filas (Antigua 292, Petén 348); `porcentaje = casos / base × 100` se cumple en todas. | Se copian tal cual a `encuesta_residentes_tabulados`. |
+| 20 | `Asignacion_Archivos_por_Grupo_Observatorio.xlsx` confirma las hojas y subdestinos de cada grupo; menciona una "BD_COMPLEMENTARIA (Parquet)" que **no vino en la carpeta**. | No se usa; se anota como fuente opcional ausente. |
+
+## Pendiente de confirmar con la coordinación del curso
+1. ¿Cómo se obtiene el **total del destino**? No hay fila de total en movilidad y la guía prohíbe sumar subdestinos.
+2. La migración **no trae datos diarios** aunque la guía lo diga.
+3. Antigua: ¿los gastos en Q vacíos (172 casos) son filtro del cuestionario o dato faltante? ¿Qué categorías son P70a_01 a P70a_06?
+4. ¿Los ceros de Tikal abr-sep 2020 y enero 2017 se interpretan como cierre y dato ausente?
