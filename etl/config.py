@@ -11,6 +11,13 @@ F_MOV_MENSUAL = "BD_moviidad_mensual.xlsx"
 F_MOV_DIARIO = "BD_moviidad_diario.xlsx"
 F_OCUPACION = "indice_ocupacion_mensual_2023_2025_1.csv"
 F_OFERTA = "oferta_hotelera_2022_2026.csv"
+F_TIKAL = "Visitantes_Tikal_2017-2026.xlsx"
+F_AIMM_CONSOLIDADO = "AIMM_Consolidado_2022-2025.xlsx"
+F_AIMM_AEROLINEAS = "AIMM_Aerolineas_2023-2026.xlsx"
+F_AIMM_OPERACIONES = "AIMM_Operaciones_Aeronauticas_2022-2026.xlsx"
+F_ENC_ANTIGUA = "Encuesta_visitante_Antigua_2025.xlsx"
+F_ENC_PETEN = "Encuesta_visitante_Peten_2025.xlsx"
+F_ENC_RESIDENTES = "Encuesta_residentes_2025_agregado.xlsx"
 
 # Hoja de movilidad -> (clave interna, nombre del destino, departamento(s) base)
 DESTINOS = {
@@ -33,10 +40,22 @@ FECHA_INI = "2009-01-01"
 FECHA_FIN = "2026-12-31"
 
 # Rango de meses para la tabla de cobertura
-COBERTURA_INI = "2022-01"
+COBERTURA_INI = "2017-01"
 COBERTURA_FIN = "2026-12"
 
 # Ruptura metodológica de migración (la serie 2023+ no es comparable en niveles con <=2022)
 MIG_ANIO_QUIEBRE = 2023
 # Tipos de viajero que SÍ son visitantes (Viajero y Cruceristas no cuentan)
 MIG_TIPOS_VISITANTE = ["Turista", "Excursionista"]
+
+# Meses en español -> número (minúsculas, sin acentos)
+MESES_ES = {"enero": 1, "febrero": 2, "marzo": 3, "abril": 4, "mayo": 5, "junio": 6, "julio": 7,
+            "agosto": 8, "septiembre": 9, "setiembre": 9, "octubre": 10, "noviembre": 11, "diciembre": 12}
+
+# Mercados con grupo propio en la migración desde 2023 (nombre en migración -> nombre en movilidad)
+MERCADOS = {
+    "Estados Unidos de América": "Estados Unidos", "México": "Mexico", "El Salvador": "El Salvador",
+    "Honduras": "Honduras", "Canadá": "Canada", "Alemania": "Alemania", "Francia": "Francia",
+    "España": "España", "Reino Unido de Gran Bretaña e Irlanda del Norte": "Reino Unido",
+    "Colombia": "Colombia", "Costa Rica": "Costa Rica",
+}

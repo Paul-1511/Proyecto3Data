@@ -60,6 +60,12 @@ def exigir_columnas(df: pd.DataFrame, columnas: list[str], origen: str) -> None:
 def guardar(df: pd.DataFrame, nombre: str) -> Path:
     config.PROC.mkdir(parents=True, exist_ok=True)
     ruta = config.PROC / f"{nombre}.parquet"
-    df.to_parquet(ruta, index=False)
+    try:
+        df.to_parquet(ruta, index=False)
+    except Exception:  # columnas object con tipos mezclados (p. ej. encuestas): se guardan como texto
+        df = df.copy()
+        for c in df.select_dtypes(include="object").columns:
+            df[c] = df[c].map(lambda v: None if pd.isna(v) else str(v)).astype("string")
+        df.to_parquet(ruta, index=False)
     log.info("escrito %s  (%s filas, %s columnas)", ruta.name, f"{len(df):,}", df.shape[1])
     return ruta
