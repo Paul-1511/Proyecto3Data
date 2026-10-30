@@ -22,9 +22,13 @@ tests/           pruebas
 1. Colocar los archivos entregados por el curso en `data/raw/` (mismos nombres de archivo).
 2. Instalar dependencias: `pip install -r requirements.txt`
 3. Ejecutar: `python -m etl.run_all`
-4. Pruebas: `pytest`
+4. Contrato de datos: `python -m etl.generar_contrato` (genera `docs/data_contract.md`)
+5. Pruebas: `pytest`
+6. Verificación de P1: `python -m etl.checklist_p1`
 
-_(Instrucciones de Docker y del tablero: las completa P2/P4.)_
+Genera 34 tablas Parquet en `data/processed/` (ver `docs/data_contract.md`).
+
+_(Instrucciones de Docker y del tablero: las completan P2 y P4.)_
 
 ## Equipo y responsabilidades
 Ver `docs/` y los archivos `HANDOFF_P*.md`.
