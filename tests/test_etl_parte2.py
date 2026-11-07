@@ -5,9 +5,17 @@ import pytest
 
 from etl import config
 from etl.generar_contrato import DESC
+from etl.utils import tablas_esperadas
 
-faltan = [n for n in DESC if not (config.PROC / f"{n}.parquet").exists()]
+ESPERADAS = tablas_esperadas(list(DESC))  # sin las de bloques opcionales cuyos archivos no están en data/raw
+faltan = [n for n in ESPERADAS if not (config.PROC / f"{n}.parquet").exists()]
 pytestmark = pytest.mark.skipif(bool(faltan), reason=f"Corra `python -m etl.run_all` (faltan {faltan[:3]}...)")
+
+
+def opcional(*tablas):
+    """Omite la prueba si la fuente opcional no existe para este grupo (p. ej. Grupo 4 no recibe Tikal/AIMM/encuestas)."""
+    return pytest.mark.skipif(any(not (config.PROC / f"{t}.parquet").exists() for t in tablas),
+                              reason="fuente opcional no disponible para este grupo")
 
 
 def rd(n):
@@ -59,6 +67,7 @@ def test_oferta_destino_suma_pacifico():
 
 
 # ---------- Tikal y AIMM ----------
+@opcional("tikal_mensual")
 def test_tikal_ceros_tratados_segun_regla():
     t = rd("tikal_mensual")
     assert len(t) == 116 and t.anio_mes.is_unique
@@ -68,6 +77,7 @@ def test_tikal_ceros_tratados_segun_regla():
     assert (ok.nacionales + ok.extranjeros + ok.otros == ok.total).all()
 
 
+@opcional("aimm_pasajeros_total")
 def test_aimm_2023_reconstruido_desde_aerolineas_sin_segmento():
     t = rd("aimm_pasajeros_total")
     y = t.groupby("anio").pasajeros_total.sum()
@@ -77,6 +87,7 @@ def test_aimm_2023_reconstruido_desde_aerolineas_sin_segmento():
     assert t.anio_mes.max() == pd.Timestamp("2026-04-01")
 
 
+@opcional("aimm_operaciones")
 def test_aimm_operaciones_separa_cruces_y_poptun():
     o, a = rd("aimm_operaciones"), rd("aimm_operaciones_aux")
     assert o.groupby("anio").operaciones.sum().loc[2025] == 8_272
@@ -84,11 +95,13 @@ def test_aimm_operaciones_separa_cruces_y_poptun():
     assert not o.operador.str.contains("Cruce|Popt", case=False).any()
 
 
+@opcional("aimm_pasajeros_aerolinea")
 def test_aimm_aerolineas_no_trae_total_duplicado():
     assert "Total Mes Aerolínea" not in rd("aimm_pasajeros_aerolinea").columns
 
 
 # ---------- encuestas ----------
+@opcional("encuesta_antigua_datos", "encuesta_peten_datos")
 def test_encuestas_casos_y_escala():
     assert len(rd("encuesta_antigua_datos")) == 510 and len(rd("encuesta_peten_datos")) == 500
     for n in ("antigua", "peten"):
@@ -96,6 +109,7 @@ def test_encuestas_casos_y_escala():
         assert s.valor.between(1, 5).all() and s.id.nunique() == (510 if n == "antigua" else 500)
 
 
+@opcional("encuesta_antigua_satisfaccion_resumen", "encuesta_peten_satisfaccion_resumen")
 def test_encuestas_resumen_solo_por_segmento_nunca_total_destino():
     for n in ("antigua", "peten"):
         r = rd(f"encuesta_{n}_satisfaccion_resumen")
@@ -104,6 +118,7 @@ def test_encuestas_resumen_solo_por_segmento_nunca_total_destino():
         assert np.allclose(r.pct_insatisfecho + r.pct_neutral + r.pct_satisfecho, 100)
 
 
+@opcional("encuesta_antigua_gasto_declarado", "encuesta_peten_gasto_declarado")
 def test_encuestas_gasto_es_declarado_y_sin_negativos():
     for n in ("antigua", "peten"):
         g = rd(f"encuesta_{n}_gasto_declarado")
@@ -112,6 +127,7 @@ def test_encuestas_gasto_es_declarado_y_sin_negativos():
         assert g.noches.dropna().gt(0).all()
 
 
+@opcional("encuesta_residentes_tabulados")
 def test_residentes_porcentaje_coincide_con_casos_sobre_base():
     t = rd("encuesta_residentes_tabulados")
     assert ((100 * t.casos / t.base - t.porcentaje).abs() <= 0.11).all()
@@ -192,6 +208,6 @@ def test_cobertura_diaria_distingue_parcial_de_completa():
 # ---------- contrato ----------
 def test_todo_parquet_esta_documentado_en_el_contrato():
     en_disco = {p.stem for p in config.PROC.glob("*.parquet")}
-    assert en_disco == set(DESC), f"sin documentar: {en_disco - set(DESC)}; documentadas sin archivo: {set(DESC) - en_disco}"
+    assert en_disco == set(ESPERADAS), f"sin documentar: {en_disco - set(ESPERADAS)}; esperadas sin archivo: {set(ESPERADAS) - en_disco}"
     txt = (config.ROOT / "docs" / "data_contract.md").read_text(encoding="utf-8")
-    assert all(f"## {n}" in txt for n in DESC)
+    assert all(f"## {n}" in txt for n in ESPERADAS)
