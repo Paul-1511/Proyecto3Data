@@ -59,3 +59,21 @@ MERCADOS = {
     "España": "España", "Reino Unido de Gran Bretaña e Irlanda del Norte": "Reino Unido",
     "Colombia": "Colombia", "Costa Rica": "Costa Rica",
 }
+
+# Fuentes OPCIONALES: solo algunos grupos las reciben (ver Asignacion_Archivos_por_Grupo_Observatorio.xlsx).
+# Si falta alguno de los archivos de un grupo, el ETL omite ese bloque completo (no falla).
+FUENTES_OPCIONALES = {
+    "tikal_aimm": {
+        "archivos": [F_TIKAL, F_AIMM_CONSOLIDADO, F_AIMM_AEROLINEAS, F_AIMM_OPERACIONES],
+        "tablas": ["tikal_mensual", "aimm_pasajeros_segmento", "aimm_pasajeros_aerolinea",
+                   "aimm_pasajeros_total", "aimm_operaciones", "aimm_operaciones_aux"],
+    },
+    "encuestas": {
+        "archivos": [F_ENC_ANTIGUA, F_ENC_PETEN, F_ENC_RESIDENTES],
+        "tablas": ["encuesta_antigua_datos", "encuesta_antigua_diccionario", "encuesta_antigua_satisfaccion",
+                   "encuesta_antigua_satisfaccion_resumen", "encuesta_antigua_gasto_declarado",
+                   "encuesta_peten_datos", "encuesta_peten_diccionario", "encuesta_peten_satisfaccion",
+                   "encuesta_peten_satisfaccion_resumen", "encuesta_peten_gasto_declarado",
+                   "encuesta_residentes_tabulados"],
+    },
+}

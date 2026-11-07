@@ -69,3 +69,19 @@ def guardar(df: pd.DataFrame, nombre: str) -> Path:
         df.to_parquet(ruta, index=False)
     log.info("escrito %s  (%s filas, %s columnas)", ruta.name, f"{len(df):,}", df.shape[1])
     return ruta
+
+
+def faltantes(archivos: list[str]) -> list[str]:
+    """Archivos de data/raw/ que no existen."""
+    return [a for a in archivos if not (config.RAW / a).exists()]
+
+
+def bloque_disponible(nombre: str) -> bool:
+    """True si están TODOS los archivos de un bloque opcional (config.FUENTES_OPCIONALES)."""
+    return not faltantes(config.FUENTES_OPCIONALES[nombre]["archivos"])
+
+
+def tablas_esperadas(todas: list[str]) -> list[str]:
+    """Tablas que el ETL debe producir con los archivos presentes en data/raw/."""
+    omitidas = {t for b, c in config.FUENTES_OPCIONALES.items() if not bloque_disponible(b) for t in c["tablas"]}
+    return [t for t in todas if t not in omitidas]
