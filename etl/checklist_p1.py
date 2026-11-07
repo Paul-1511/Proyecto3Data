@@ -10,6 +10,7 @@ import pandas as pd
 
 from etl import config
 from etl.generar_contrato import DESC
+from etl.utils import faltantes, tablas_esperadas
 
 R = config.ROOT
 OK, NO, PEND = "[x]", "[ ]", "[~]"
@@ -38,13 +39,17 @@ def git(*a: str) -> str | None:
 
 def main() -> int:
     # 1. Tablas
-    faltan = [n for n in DESC if not (config.PROC / f"{n}.parquet").exists()]
-    chk(not faltan, "ETL reproducible: las 34 tablas existen", f"{len(DESC) - len(faltan)}/{len(DESC)} parquet en data/processed/"
-        + (f"; faltan {faltan[:3]}" if faltan else ""))
+    ESP = tablas_esperadas(list(DESC))
+    omitidos = [b for b, c in config.FUENTES_OPCIONALES.items() if faltantes(c["archivos"])]
+    faltan = [n for n in ESP if not (config.PROC / f"{n}.parquet").exists()]
+    chk(not faltan, f"ETL reproducible: las {len(ESP)} tablas esperadas existen",
+        f"{len(ESP) - len(faltan)}/{len(ESP)} parquet en data/processed/"
+        + (f"; faltan {faltan[:3]}" if faltan else "")
+        + (f". Bloques opcionales sin archivos (normal según el grupo): {', '.join(omitidos)}" if omitidos else ""))
     if faltan:
         _escribir()
         return 1
-    chk(all(len(rd(n)) > 0 for n in DESC), "Ninguna tabla vacía", "todas con filas")
+    chk(all(len(rd(n)) > 0 for n in ESP), "Ninguna tabla vacía", "todas con filas")
 
     # 2. Pruebas
     p = subprocess.run([sys.executable, "-m", "pytest", "-q"], cwd=R, capture_output=True, text=True)
@@ -58,8 +63,9 @@ def main() -> int:
     c = rd("cobertura")
     huecos = c[(c.fuente == "movilidad_mensual") & c.anio_mes.isin(pd.to_datetime(["2026-01-01", "2026-02-01"]))]
     chk(not huecos.tiene_dato.any(), "Cobertura declara ene-feb 2026 como sin dato", "movilidad_mensual: tiene_dato = False")
-    t = rd("tikal_mensual")
-    chk(t[t.cero_dudoso].total.isna().all(), "Cero dudoso de Tikal convertido a NaN", f"{int(t.cero_dudoso.sum())} mes(es)")
+    if "tikal_mensual" in ESP:
+        t = rd("tikal_mensual")
+        chk(t[t.cero_dudoso].total.isna().all(), "Cero dudoso de Tikal convertido a NaN", f"{int(t.cero_dudoso.sum())} mes(es)")
 
     # 4. Pronóstico y errores
     pr, rs, va = rd("pronostico_ene_feb_2026"), rd("pronostico_resumen_modelo"), rd("pronostico_validacion")
@@ -74,9 +80,9 @@ def main() -> int:
         f"{pr.subdestino.nunique()} subdestinos estimados por separado")
 
     # 5. Documentación
-    chk("## Índice" in (R / "docs/data_contract.md").read_text(encoding="utf-8") and
-        all(f"## {n}" in (R / "docs/data_contract.md").read_text(encoding="utf-8") for n in DESC),
-        "data_contract.md documenta las 34 tablas", "generado desde los parquet")
+    contrato = (R / "docs/data_contract.md").read_text(encoding="utf-8")
+    chk("## Índice" in contrato and all(f"## {n}" in contrato for n in ESP),
+        f"data_contract.md documenta las {len(ESP)} tablas", "generado desde los parquet")
     sec = (R / "docs/seccion_arquitectura_y_pronostico.md").read_text(encoding="utf-8")
     fichas = len(re.findall(r"^### 5\.\d", sec, flags=re.M))
     campos = all(len(re.findall(rf"^\| {i}\. ", sec, flags=re.M)) == fichas for i in range(1, 9))
@@ -88,10 +94,11 @@ def main() -> int:
     gi = (R / ".gitignore").read_text(encoding="utf-8")
     chk(all(x in gi for x in ["data/raw/*", "data/processed/*", "*.xlsx", "*.csv", "*.parquet"]),
         ".gitignore bloquea datos originales y procesados", "data/raw, data/processed, xlsx, csv, parquet")
-    texto_libre = [col for n in ("encuesta_antigua_gasto_declarado", "encuesta_peten_gasto_declarado",
-                                 "encuesta_antigua_satisfaccion", "encuesta_peten_satisfaccion")
-                   for col in rd(n).columns if "other" in col or "_otro" in col]
-    chk(not texto_libre, "Tablas derivadas de encuestas sin textos libres", "solo variables codificadas")
+    enc = [n for n in ("encuesta_antigua_gasto_declarado", "encuesta_peten_gasto_declarado",
+                       "encuesta_antigua_satisfaccion", "encuesta_peten_satisfaccion") if n in ESP]
+    if enc:
+        texto_libre = [col for n in enc for col in rd(n).columns if "other" in col or "_otro" in col]
+        chk(not texto_libre, "Tablas derivadas de encuestas sin textos libres", "solo variables codificadas")
 
     # 7. Git (solo se puede evaluar en el repo del equipo)
     if git("rev-parse", "--is-inside-work-tree") == "true":

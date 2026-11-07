@@ -5,6 +5,7 @@ import pandas as pd
 import pyarrow.parquet as pq
 
 from etl import config
+from etl.utils import tablas_esperadas
 
 REGLAS = """## Reglas para quien consume estas tablas
 1. Una fila ausente significa **sin dato**, nunca cero. Consulte `cobertura` antes de graficar.
@@ -60,18 +61,16 @@ DESC = {
 def main() -> None:
     partes = ["# Contrato de datos (`data/processed/`)\n",
               "_Generado por `python -m etl.generar_contrato` a partir del esquema real de los parquet. "
-              "Todas las fechas son `datetime64`; `anio_mes` = primer día del mes._\n", REGLAS]
-    faltan = []
-    for ruta in sorted(config.PROC.glob("*.parquet")):
-        n = ruta.stem
-        if n not in DESC:
-            faltan.append(n)
-            continue
-    if faltan:
-        raise SystemExit(f"Tablas sin descripción en DESC: {faltan}")
+              "Todas las fechas son `datetime64`; `anio_mes` = primer día del mes. Las tablas de Tikal/AIMM y "
+              "encuestas solo existen si el grupo recibió esos archivos._\n", REGLAS]
+    esperadas = tablas_esperadas(list(DESC))
+    sin_desc = [p.stem for p in config.PROC.glob("*.parquet") if p.stem not in DESC]
+    if sin_desc:
+        raise SystemExit(f"Tablas sin descripción en DESC: {sin_desc}")
     partes.append("## Índice\n\n| tabla | filas | grano | descripción |\n|---|---:|---|---|")
     meta = {}
-    for n, (d, grano) in DESC.items():
+    for n in esperadas:
+        d, grano = DESC[n]
         ruta = config.PROC / f"{n}.parquet"
         if not ruta.exists():
             raise SystemExit(f"Falta la tabla documentada {n}. Corra python -m etl.run_all")
@@ -79,7 +78,8 @@ def main() -> None:
         meta[n] = pf
         partes.append(f"| `{n}` | {pf.metadata.num_rows:,} | {grano} | {d} |")
     partes.append("")
-    for n, (d, grano) in DESC.items():
+    for n in esperadas:
+        d, grano = DESC[n]
         pf = meta[n]
         sch = pf.schema_arrow
         partes.append(f"## {n}\n\n{d}\n\n- Grano: {grano}\n- Filas: {pf.metadata.num_rows:,}\n")
@@ -90,7 +90,8 @@ def main() -> None:
             partes += [f"| `{f.name}` | {f.type} |" for f in sch]
             partes.append("")
     (config.ROOT / "docs" / "data_contract.md").write_text("\n".join(partes), encoding="utf-8")
-    print(f"docs/data_contract.md escrito con {len(DESC)} tablas")
+    print(f"docs/data_contract.md escrito con {len(esperadas)} tablas"
+          + (f" (omitidas por falta de archivos opcionales: {len(DESC) - len(esperadas)})" if len(esperadas) < len(DESC) else ""))
 
 
 if __name__ == "__main__":
