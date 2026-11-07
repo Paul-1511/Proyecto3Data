@@ -63,6 +63,9 @@ Encuestas de visitante (Antigua, Petén), tabulados de residentes, AIMM (3 archi
 | 19 | Residentes: 640 filas (Antigua 292, Petén 348); `porcentaje = casos / base × 100` se cumple en todas. | Se copian tal cual a `encuesta_residentes_tabulados`. |
 | 20 | `Asignacion_Archivos_por_Grupo_Observatorio.xlsx` confirma las hojas y subdestinos de cada grupo; menciona una "BD_COMPLEMENTARIA (Parquet)" que **no vino en la carpeta**. | No se usa; se anota como fuente opcional ausente. |
 
+| 21 | **Alcance por grupo.** La asignación oficial da al Grupo 4 solo migración, movilidad (hoja Alta Verapaz), ocupación y oferta; Tikal, AIMM y encuestas son de los Grupos 1 y 2. Los archivos comunes de movilidad sí traen las 6 hojas. | El ETL trata Tikal/AIMM y encuestas como bloques **opcionales**: sin esos archivos se omiten (17 tablas). |
+| 22 | Alta Verapaz (3 subdestinos: `Coban`, `Lanquin`, `Cuevas De Candelaria`): los extranjeros son ~2 % de los visitantes-mes de Cobán, pero los nacionales llevan factor de expansión y los extranjeros no. | **No dividir extranjeros entre total** para el "peso de extranjeros" del reto del Grupo 4 (la guía lo prohíbe aunque su tabla de ejemplo lo haga): comparar volúmenes de extranjeros entre subdestinos y estadía por tipo. |
+
 ## Pendiente de confirmar con la coordinación del curso
 1. ¿Cómo se obtiene el **total del destino**? No hay fila de total en movilidad y la guía prohíbe sumar subdestinos.
 2. La migración **no trae datos diarios** aunque la guía lo diga.

@@ -7,7 +7,7 @@ No se usa base de datos relacional: el volumen es bajo (la tabla más grande, `m
 tablero es de solo lectura y el despliegue en Docker se simplifica con archivos montados como volumen.
 
 **Flujo.** `data/raw/` (Excel y CSV del curso, no versionados) → `etl/` (scripts reproducibles, `python -m etl.run_all`)
-→ `data/processed/*.parquet` (34 tablas, no versionadas) → `app/` (Dash, solo lectura).
+→ `data/processed/*.parquet` (hasta 34 tablas; 17 si no hay Tikal/AIMM/encuestas, caso del Grupo 4; no versionadas) → `app/` (Dash, solo lectura).
 
 **Relación entre tablas.** Todas se relacionan por una tabla de fechas común, `dim_fecha` (un día por fila, 2009-2026), a
 través de `fecha` (diario) o `anio_mes` (mensual, primer día del mes). Los destinos se identifican con `destino_clave`
@@ -31,7 +31,7 @@ observatorio-inguat/
 ├── etl/   config.py utils.py dim_fecha.py migracion.py movilidad.py ocupacion_oferta.py
 │          tikal_aimm.py encuestas.py cobertura.py pronostico.py run_all.py generar_contrato.py checklist_p1.py
 ├── app/   (tablero Dash: lo construyen P2, P3 y P4)
-├── tests/ (pytest: 42 pruebas)
+├── tests/ (pytest: 42 pruebas; 8 se omiten si faltan las fuentes opcionales)
 └── docs/  inspeccion_datos.md, data_contract.md, esta sección, PROGRESO_P1.md
 ```
 

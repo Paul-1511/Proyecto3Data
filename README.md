@@ -26,7 +26,11 @@ tests/           pruebas
 5. Pruebas: `pytest`
 6. Verificación de P1: `python -m etl.checklist_p1`
 
-Genera 34 tablas Parquet en `data/processed/` (ver `docs/data_contract.md`).
+Genera hasta 34 tablas Parquet en `data/processed/` (ver `docs/data_contract.md`).
+
+**Fuentes opcionales.** Los archivos de Tikal/AIMM y de las encuestas solo los reciben algunos grupos. Si faltan en
+`data/raw/`, el ETL omite esos bloques con un aviso y produce las 17 tablas restantes (es el caso del Grupo 4: Cobán y
+Alta Verapaz). Las pruebas y el checklist se ajustan solos a los archivos presentes.
 
 _(Instrucciones de Docker y del tablero: las completan P2 y P4.)_
 
