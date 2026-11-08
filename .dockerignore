@@ -1,0 +1,43 @@
+# Datos institucionales: nunca deben entrar al contexto de construcción ni a la imagen
+data/raw/
+data/processed/
+data/
+oneDrive/
+**/*.xlsx
+**/*.xls
+**/*.csv
+**/*.parquet
+**/*.zip
+**/*.pdf
+
+# Control de versiones y entornos
+.git/
+.gitignore
+.venv/
+venv/
+env/
+
+# Cachés y artefactos
+**/__pycache__/
+**/*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Secretos y configuración local
+.env
+.env.*
+**/.env
+*.pem
+*.key
+secrets/
+
+# No se necesitan en la imagen (solo se copia app/ y requirements.txt)
+etl/
+tests/
+docs/
+HANDOFF*.md
+README.md
+.vscode/
+.idea/
+.claude/

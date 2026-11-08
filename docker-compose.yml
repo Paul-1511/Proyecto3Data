@@ -1,0 +1,25 @@
+# Observatorio de Inteligencia Turística — Cobán y Alta Verapaz
+#   Levantar:  docker compose up --build        (http://localhost:8050)
+# Requiere que ./data/processed ya contenga los Parquet generados con `python -m etl.run_all`.
+services:
+  observatorio:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: observatorio-inguat:latest
+    container_name: observatorio-inguat
+    # Solo accesible desde esta máquina (no se expone a la red).
+    ports:
+      - "127.0.0.1:8050:8050"
+    volumes:
+      # Solo los Parquet procesados, en solo lectura. data/raw NO se monta.
+      - ./data/processed:/app/data/processed:ro
+    restart: unless-stopped
+    # Endurecimiento: sistema de archivos de solo lectura, sin privilegios adicionales.
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
