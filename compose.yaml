@@ -1,0 +1,43 @@
+services:
+  etl:
+    build:
+      context: .
+    command: ["python", "-m", "etl.run_all"]
+    volumes:
+      - ./data/raw:/app/data/raw:ro
+      - ./data/processed:/app/data/processed
+    restart: "no"
+
+  app:
+    build:
+      context: .
+    command:
+      [
+        "gunicorn",
+        "--bind",
+        "0.0.0.0:8050",
+        "--workers",
+        "1",
+        "--timeout",
+        "120",
+        "app.main:server",
+      ]
+    depends_on:
+      etl:
+        condition: service_completed_successfully
+    ports:
+      - "8050:8050"
+    volumes:
+      - ./data/processed:/app/data/processed:ro
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8050/', timeout=3)",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s

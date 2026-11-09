@@ -28,6 +28,25 @@ tests/           pruebas
 
 Genera hasta 34 tablas Parquet en `data/processed/` (ver `docs/data_contract.md`).
 
+## Cómo correr el tablero con Docker
+
+Con Docker Desktop iniciado y los archivos del curso en `data/raw/`:
+
+```bash
+docker compose up --build
+```
+
+Compose ejecuta primero el ETL y luego inicia el tablero Dash en
+<http://localhost:8050>. El tablero muestra datos de Alta Verapaz por subdestino.
+Los archivos de `data/raw/` se montan como solo lectura y los datos institucionales
+no se copian a la imagen. Para detenerlo, use `docker compose down`.
+
+Para correr el tablero sin Docker, ejecute primero `python -m etl.run_all` y luego:
+
+```bash
+python -m app.main
+```
+
 **Fuentes opcionales.** Los archivos de Tikal/AIMM y de las encuestas solo los reciben algunos grupos. Si faltan en
 `data/raw/`, el ETL omite esos bloques con un aviso y produce las 17 tablas restantes (es el caso del Grupo 4: Cobán y
 Alta Verapaz). Las pruebas y el checklist se ajustan solos a los archivos presentes.
