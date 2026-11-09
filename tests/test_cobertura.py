@@ -107,3 +107,36 @@ def test_tabla_vacia():
 
 def test_fuente_desconocida_es_generica():
     assert cb.fuente("aimm_pasajeros").etiqueta == "Aimm pasajeros"
+
+
+# ------------------------------------------- aplicación a los módulos 1 y 2 (P3, PR separado)
+def test_solo_con_cobertura_quita_meses_sin_dato(cob):
+    df = pd.DataFrame({"anio_mes": pd.to_datetime(["2025-12-01", "2026-01-01", "2026-03-01"]), "visitantes": [1, 2, 3]})
+    out = cb.solo_con_cobertura(df, "movilidad_mensual", cob)
+    assert list(out["visitantes"]) == [1, 3]          # ene 2026 sin cobertura: fuera (quedará «Sin dato»)
+
+
+def test_solo_con_cobertura_diaria_por_fecha(cob):
+    df = pd.DataFrame({"fecha": pd.to_datetime(["2026-02-10", "2026-03-05"]), "presencia": [5.0, 6.0]})
+    assert list(cb.solo_con_cobertura(df, "movilidad_diaria", cob, columna="fecha")["presencia"]) == [6.0]
+
+
+def test_solo_con_cobertura_sin_tabla_no_cambia_nada():
+    df = pd.DataFrame({"anio_mes": pd.to_datetime(["2026-01-01"]), "visitantes": [1]})
+    vacia = cb.validar(pd.DataFrame(columns=list(cb.COLUMNAS)))
+    assert len(cb.solo_con_cobertura(df, "movilidad_mensual", vacia)) == 1
+    assert len(cb.solo_con_cobertura(df, "fuente_ausente", vacia)) == 1
+
+
+def test_modulos_1_y_2_usan_la_cobertura(monkeypatch, cob):
+    from app import modulo1, modulo2
+    llamadas = []
+    original = cb.solo_con_cobertura
+    monkeypatch.setattr(cb, "solo_con_cobertura",
+                        lambda df, clave, c=None, columna="anio_mes": llamadas.append(clave) or original(df, clave, cob, columna))
+    monkeypatch.setattr(modulo1, "_leer", lambda nombre, cols: pd.DataFrame(
+        {"anio_mes": pd.to_datetime(["2026-01-01", "2026-03-01"]), **{c: ["x", "y"] for c in cols if c != "anio_mes"}}))
+    assert len(modulo1._leer_sub()) == 1 and len(modulo1._leer_pais()) == 1
+    monkeypatch.setattr(modulo2, "_leer", modulo1._leer)
+    assert len(modulo2._leer_diaria()) == 1 and len(modulo2._leer_sub()) == 1
+    assert llamadas == ["movilidad_mensual", "movilidad_mensual", "movilidad_diaria", "movilidad_mensual"]

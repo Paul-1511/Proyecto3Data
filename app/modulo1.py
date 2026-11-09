@@ -39,7 +39,7 @@ from dash import Input, Output, ctx, dcc, html
 
 from app import theme
 from app.theme import ID_STORE_FILTROS
-from app.utils import datos, metricas
+from app.utils import cobertura, datos, metricas
 from app.utils.datos import Filtros
 
 DESTINO_CLAVE = "alta_verapaz"
@@ -74,13 +74,16 @@ def _leer(nombre: str, columnas: list) -> pd.DataFrame:
 
 
 def _leer_sub() -> pd.DataFrame:
-    return _leer(FUENTE_SUB, ["destino_clave", "subdestino", "anio_mes", "tipo", "segmento",
-                              "visitantes", "dias_persona"])
+    # P3: solo meses con cobertura de movilidad mensual (los demás quedan «Sin dato»).
+    return cobertura.solo_con_cobertura(_leer(FUENTE_SUB, ["destino_clave", "subdestino", "anio_mes", "tipo",
+                                                           "segmento", "visitantes", "dias_persona"]),
+                                        "movilidad_mensual")
 
 
 def _leer_pais() -> pd.DataFrame:
-    return _leer(FUENTE_PAIS, ["destino_clave", "subdestino", "anio_mes", "pais", "tipo", "segmento",
-                               "visitantes", "dias_persona"])
+    return cobertura.solo_con_cobertura(_leer(FUENTE_PAIS, ["destino_clave", "subdestino", "anio_mes", "pais",
+                                                            "tipo", "segmento", "visitantes", "dias_persona"]),
+                                        "movilidad_mensual")
 
 
 def solo_alta_verapaz(df: pd.DataFrame) -> pd.DataFrame:
