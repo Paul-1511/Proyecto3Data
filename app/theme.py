@@ -56,6 +56,14 @@ COLOR_SIN_DATO_TEXTO = "#5F6368"    # texto (AA sobre blanco)
 ETIQUETA_ESTIMACION = "Estimación"
 ETIQUETA_SIN_DATO = "Sin dato"
 
+# Indicador de cobertura por fuente (P3): chips claros sobre el encabezado oscuro.
+# Verde = la fuente tiene dato; gris = sin dato. El estado también va en texto (✓ / ◐ / —),
+# así que no depende solo del color.
+COBERTURA_TEXTO = "#0F5132"          # verde oscuro (texto de chips con dato)
+COBERTURA_FONDO = "#D1E7DD"          # verde claro (dato completo)
+COBERTURA_PARCIAL_FONDO = "#F1F8F4"  # verde muy claro + borde discontinuo (dato parcial)
+COBERTURA_SIN_DATO_FONDO = "#E5E7EB"  # gris (sin dato)
+
 # Pares (nombre, texto, fondo) que se usan para texto y deben cumplir AA.
 PARES_TEXTO_AA = (
     ("texto/fondo", TEXTO, FONDO),
@@ -67,6 +75,9 @@ PARES_TEXTO_AA = (
     ("estimacion_texto/fondo_pagina", COLOR_ESTIMACION_TEXTO, FONDO_PAGINA),
     ("sin_dato_texto/fondo", COLOR_SIN_DATO_TEXTO, FONDO),
     ("sin_dato_texto/fondo_pagina", COLOR_SIN_DATO_TEXTO, FONDO_PAGINA),
+    ("cobertura/completa", COBERTURA_TEXTO, COBERTURA_FONDO),
+    ("cobertura/parcial", COBERTURA_TEXTO, COBERTURA_PARCIAL_FONDO),
+    ("cobertura/sin_dato", COLOR_SIN_DATO_TEXTO, COBERTURA_SIN_DATO_FONDO),
 )
 
 FUENTE = "Inter, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"

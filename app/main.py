@@ -41,7 +41,7 @@ import dash_bootstrap_components as dbc
 import pandas as pd
 from dash import Dash, Input, Output, dcc, html
 
-from app import theme
+from app import indicador_cobertura, theme
 from app.theme import ID_SLOT_COBERTURA, ID_STORE_FILTROS
 from app.utils import datos
 from app.utils.datos import Filtros
@@ -275,8 +275,8 @@ def _encabezado(opciones: Opciones):
                      style={"color": theme.TEXTO_SOBRE_ENCABEZADO}),
         ], xs=12, lg=7),
         dbc.Col(
-            # Espacio reservado: P3 coloca aquí el indicador de cobertura por fuente.
-            html.Div("Indicador de cobertura: pendiente (P3)", id=ID_SLOT_COBERTURA,
+            # Indicador de cobertura por fuente (P3): lo llena app/indicador_cobertura.py.
+            html.Div("Cargando cobertura por fuente…", id=ID_SLOT_COBERTURA,
                      className="small text-lg-end",
                      style={"color": theme.TEXTO_SOBRE_ENCABEZADO}),
             xs=12, lg=5, className="mt-2 mt-lg-0"),
@@ -348,6 +348,9 @@ def crear_app(opciones: Optional[Opciones] = None,
         registrar = getattr(implementaciones.get(m.id), "registrar_callbacks", None)
         if callable(registrar):
             registrar(aplicacion)
+
+    # Indicador de cobertura del encabezado (todas las pestañas): único escritor de slot-cobertura.
+    indicador_cobertura.registrar_callbacks(aplicacion)
 
     return aplicacion
 
