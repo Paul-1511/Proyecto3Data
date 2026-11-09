@@ -65,7 +65,7 @@ def fuente(clave: str) -> Fuente:
 def cargar(directorio: Optional[Path] = None) -> pd.DataFrame:
     """Tabla de cobertura validada. Si el parquet no existe devuelve una tabla vacía."""
     try:
-        df = datos.cargar(TABLA, directorio)
+        df = datos.cargar(TABLA) if directorio is None else datos.cargar(TABLA, directorio)
     except FileNotFoundError:
         return pd.DataFrame({"fuente": pd.Series(dtype=object),
                              "anio_mes": pd.Series(dtype="datetime64[ns]"),
@@ -158,6 +158,22 @@ def periodo_total(cob: pd.DataFrame, clave: str) -> pd.DatetimeIndex:
     """Todos los meses con dato de la fuente (para el tooltip: «período cubierto»)."""
     sub = cob[(cob["fuente"] == clave) & cob["tiene_dato"]]
     return pd.DatetimeIndex(sorted(sub["anio_mes"].unique()), name="anio_mes")
+
+
+def solo_con_cobertura(df: pd.DataFrame, clave: str, cob: Optional[pd.DataFrame] = None,
+                       columna: str = "anio_mes") -> pd.DataFrame:
+    """Quita las filas de meses que la tabla de cobertura marca SIN dato para ``clave`` (copia).
+
+    Así la regla «sin cobertura = Sin dato» depende de la tabla de cobertura y no solo de que haya
+    filas: un mes sin cobertura queda sin filas y los gráficos lo rotulan «Sin dato» (nunca 0).
+    Si la tabla de cobertura no existe o no trae la fuente, ``df`` se devuelve sin cambios.
+    """
+    cob = cargar() if cob is None else cob
+    if cob.empty or clave not in set(cob["fuente"]) or df.empty or columna not in df.columns:
+        return df.copy()
+    meses = pd.to_datetime(df[columna]).dt.to_period("M").dt.to_timestamp()
+    validos = set(periodo_total(cob, clave))
+    return df.loc[meses.isin(validos)].copy()
 
 
 # ---------------------------------------------------------------------- estado
