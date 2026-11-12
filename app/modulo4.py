@@ -78,19 +78,19 @@ def fig_perfil(df: pd.DataFrame, f: Filtros) -> go.Figure:
     if df["promedio_mensual"].notna().sum() == 0:
         return theme.figura_sin_dato(titulo, periodo)
     fig = make_subplots(rows=1, cols=2, subplot_titles=("Promedio mensual", "Más de 1 día"))
-    colores = [theme.CATEGORICOS[0], theme.CATEGORICOS[1], theme.CATEGORICOS[2]]
-    fig.add_bar(x=df["nombre"], y=df["promedio_mensual"], marker_color=colores, row=1, col=1,
+    # El tipo global define el color. La posición y la etiqueta ya identifican el subdestino;
+    # usar tres colores sin leyenda introduciría una codificación visual innecesaria.
+    color_tipo = theme.COLOR_NACIONAL if f.tipo == "nacional" else theme.COLOR_EXTRANJERO
+    fig.add_bar(x=df["nombre"], y=df["promedio_mensual"], marker_color=color_tipo, row=1, col=1,
                 customdata=np.c_[df["n_meses"]],
                 hovertemplate="%{x}<br>Promedio: %{y:,.0f}<br>Meses: %{customdata[0]}<extra></extra>")
-    fig.add_bar(x=df["nombre"], y=df["prop_mas_1"] * 100, marker_color=colores, row=1, col=2,
+    fig.add_bar(x=df["nombre"], y=df["prop_mas_1"] * 100, marker_color=color_tipo, row=1, col=2,
                 hovertemplate="%{x}<br>Más de 1 día: %{y:.1f} %<extra></extra>")
     fig.update_layout(template=theme.PLANTILLA, height=410,
                       title=dict(text=theme.titulo_con_subtitulo(titulo, periodo)), showlegend=False,
-                      margin=dict(b=105))
+                      margin=dict(b=70))
     fig.update_yaxes(title_text="Visitantes únicos promedio/mes", tickformat=",.0f", row=1, col=1)
     fig.update_yaxes(title_text="% de visitantes del mes", ticksuffix=" %", range=[0, 100], row=1, col=2)
-    fig.add_annotation(text="Cada barra es un subdestino; no se suman subdestinos ni meses.", xref="paper", yref="paper",
-                       x=0, y=-0.22, xanchor="left", showarrow=False, font=dict(size=11, color=theme.TEXTO_SECUNDARIO))
     return fig
 
 
@@ -123,10 +123,7 @@ def fig_fin_semana(df: pd.DataFrame, f: Filtros) -> go.Figure:
     fig.update_layout(template=theme.PLANTILLA, height=410, barmode="group",
                       title=dict(text=theme.titulo_con_subtitulo(titulo, periodo)),
                       yaxis=dict(title="Personas presentes por día", tickformat=",.0f"),
-                      legend=dict(orientation="h", y=-0.18), margin=dict(b=100))
-    fig.add_annotation(text="× indica la razón sábado / lunes–viernes. Es presencia diaria, no visitantes mensuales.",
-                       xref="paper", yref="paper", x=0, y=-0.29, xanchor="left", showarrow=False,
-                       font=dict(size=11, color=theme.TEXTO_SECUNDARIO))
+                      legend=dict(orientation="h", y=-0.14, x=0), margin=dict(b=88))
     return fig
 
 
@@ -156,8 +153,10 @@ def fig_mercados(df: pd.DataFrame, f: Filtros) -> go.Figure:
     periodo = theme.subtitulo_periodo(f.mes_ini, f.mes_fin, "movilidad_mensual")
     if df["participacion"].notna().sum() == 0:
         return theme.figura_sin_dato(titulo, periodo)
+    etiquetas = [f"{pais}<br>{valor * 100:.1f} %" if pd.notna(valor) else "Sin dato"
+                 for pais, valor in zip(df["pais"], df["participacion"])]
     fig = go.Figure(go.Bar(x=df["nombre"], y=df["participacion"] * 100, marker_color=theme.COLOR_EXTRANJERO,
-                           text=df["pais"], textposition="outside",
+                           text=etiquetas, textposition="outside",
                            hovertemplate="%{x}<br>Mercado principal: %{text}<br>Participación mensual media: %{y:.1f} %<extra></extra>"))
     fig.update_layout(template=theme.PLANTILLA, height=410, showlegend=False,
                       title=dict(text=theme.titulo_con_subtitulo(titulo, periodo)),
@@ -187,6 +186,14 @@ def _grafico(id_: str) -> dbc.Card:
     return dbc.Card(dbc.CardBody(dcc.Graph(id=id_, config=_CONFIG)), className="shadow-sm")
 
 
+def _grafico_con_nota(id_: str, nota: str) -> dbc.Card:
+    """Nota HTML separada: no compite por el margen inferior de la figura Plotly."""
+    return dbc.Card(dbc.CardBody([
+        dcc.Graph(id=id_, config=_CONFIG),
+        html.P(nota, className="small mb-0 mt-1", style={"color": theme.TEXTO_SECUNDARIO}),
+    ]), className="shadow-sm")
+
+
 def layout():
     return html.Div([
         html.H2("Reto de Cobán y Alta Verapaz", className="h4 mt-3"),
@@ -195,8 +202,14 @@ def layout():
                style={"color": theme.TEXTO_SECUNDARIO}),
         dbc.Alert([html.Strong("Lectura para INGUAT. "), html.Ul(id=ID_LECTURA, className="mb-0 mt-1")],
                   color="light", className="small"),
-        dbc.Row([dbc.Col(_grafico(ID_G_PERFIL), xs=12, lg=6, className="mb-3"),
-                 dbc.Col(_grafico(ID_G_FIN_SEMANA), xs=12, lg=6, className="mb-3")]),
+        dbc.Row([dbc.Col(_grafico_con_nota(
+                    ID_G_PERFIL,
+                    "Cada barra es un subdestino; se muestran promedios de meses observados y no se suman territorios."),
+                    xs=12, lg=6, className="mb-3"),
+                 dbc.Col(_grafico_con_nota(
+                    ID_G_FIN_SEMANA,
+                    "× indica la razón sábado / lunes-viernes. Es presencia diaria, no visitantes únicos mensuales."),
+                    xs=12, lg=6, className="mb-3")]),
         html.H3("Concentración de mercados", className="h5 mt-3"),
         _grafico(ID_G_MERCADOS),
         html.P("Fuentes usadas: movilidad mensual y diaria. Ocupación y oferta se reportan en el módulo 3 a nivel "
