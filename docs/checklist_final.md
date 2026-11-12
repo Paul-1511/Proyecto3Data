@@ -18,4 +18,4 @@
 
 ## Verificación de instalación limpia
 
-El 12-nov-2026 se clonó el repositorio en una carpeta temporal, se copiaron los cinco archivos fuente de Grupo 4 a `data/raw/` y `python3 -m etl.run_all` terminó correctamente. `docker compose config --quiet` validó la configuración. La ejecución del contenedor quedó pendiente porque Docker Desktop estaba instalado pero su servicio no estaba iniciado (`Cannot connect to the Docker daemon`); la solución está documentada en el README.
+El 12-nov-2026 se clonó el repositorio en una carpeta temporal, se copiaron los cinco archivos fuente de Grupo 4 a `data/raw/` y `python3 -m etl.run_all` terminó correctamente. La imagen se construyó desde cero con `docker compose up --build -d`; el tablero respondió HTTP 200 en `http://127.0.0.1:8050/` y el healthcheck alcanzó estado `healthy`. Se ajustó `HOME=/tmp` en la imagen para conservar el sistema de archivos de solo lectura sin errores de Gunicorn.

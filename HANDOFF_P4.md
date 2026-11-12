@@ -23,15 +23,7 @@ El módulo mantiene el tipo y período globales, pero intencionalmente conserva 
 - `docs/checklist_final.md` documenta las trece reglas y evidencias.
 - `docs/memoria_tecnica.md` y `docs/memoria_tecnica.pdf` contienen la memoria final con las diez secciones solicitadas.
 - Pruebas: `python3 -m pytest -q` -> **256 passed, 8 skipped**.
-- Prueba de instalación limpia: ETL correcto desde cinco archivos fuente. Docker Compose validó configuración, pero el motor Docker local estaba apagado y no permitió levantar el contenedor. Abrir Docker Desktop y ejecutar `docker compose up --build` resuelve ese único bloqueo externo.
+- Prueba de instalación limpia: ETL correcto desde cinco archivos fuente. La imagen se construyó desde cero con `docker compose up --build -d`; el tablero respondió HTTP 200 y el healthcheck quedó `healthy` en `http://localhost:8050`.
+- La imagen conserva raíz de solo lectura y usa `HOME=/tmp` para que Gunicorn pueda abrir su socket temporal sin escribir en un directorio persistente.
 
-## Pendiente operativo
-
-Tras iniciar Docker Desktop, ejecutar desde una clonación limpia:
-
-```bash
-python -m etl.run_all
-docker compose up --build
-```
-
-Abrir `http://localhost:8050` y comprobar las cuatro pestañas. No hay cambios metodológicos pendientes.
+No hay pendientes operativos ni metodológicos.
