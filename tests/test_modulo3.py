@@ -128,7 +128,7 @@ def test_cruce_respeta_cobertura(mov, ocup, cob):
     fig, _ = m3.construir_cruce(mov, ocup, cob2, F, "Coban")
     linea = next(t for t in fig.data if t.type == "scatter")
     assert np.isnan(linea.y[2])                                   # nov: hueco, no 0
-    assert theme.ETIQUETA_SIN_DATO in _anotaciones(fig)
+    assert theme.ETIQUETA_SIN_DATO not in _anotaciones(fig)
 
 
 # ------------------------------------------------------------------- D. subdestinos
@@ -136,6 +136,17 @@ def test_subdestinos_sin_barra_total(mov, cob):
     fig = m3.construir_subdestinos(mov, cob, F, oo.PROMEDIO, None)
     assert list(fig.data[0].x) == ["Cobán", "Lanquín", "Cuevas de Candelaria"]
     assert "Total" not in " ".join(fig.data[0].x)
+
+
+def test_estacionalidad_distingue_los_anios_por_color_trazo_y_marcador(mov, ocup, cob):
+    fig = m3.construir_estacionalidad(mov, ocup, cob, F, "Coban", None)
+    trazas = {t.name: t for t in fig.data if t.name.startswith("Ocupación")}
+    assert trazas["Ocupación 2023"].marker.symbol == "circle"
+    assert trazas["Ocupación 2024"].marker.symbol == "square"
+    assert trazas["Ocupación 2025"].marker.symbol == "diamond"
+    assert trazas["Ocupación 2023"].line.color != trazas["Ocupación 2024"].line.color
+    assert trazas["Ocupación 2024"].line.dash == "dash"
+    assert trazas["Ocupación 2025"].line.dash == "dot"
 
 
 def test_subdestinos_rechaza_total_construido():

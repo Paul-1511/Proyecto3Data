@@ -217,6 +217,21 @@ def test_nacionales_separados_de_extranjeros(df_sub):
     assert list(fig2.data[0].y) == pytest.approx([150.0, 200.0])
 
 
+def test_comparativa_por_tipo_muestra_ambos_universos_en_ejes_separados(df_sub):
+    extranjeros = modulo1.preparar(df_sub, F, tipo="extranjero")
+    nacionales = modulo1.preparar(df_sub, F, tipo="nacional")
+    fig = modulo1.fig_visitantes_por_tipo(extranjeros, nacionales, F)
+    trazas = {traza.name: traza for traza in fig.data}
+    assert set(trazas) == {"Nacionales", "Extranjeros"}
+    assert trazas["Nacionales"].yaxis == "y"
+    assert trazas["Extranjeros"].yaxis == "y2"
+    assert trazas["Nacionales"].type == "bar" and trazas["Extranjeros"].type == "scatter"
+    assert list(trazas["Nacionales"].y) == pytest.approx([150.0, 200.0])
+    assert list(trazas["Extranjeros"].y) == pytest.approx([40.0, 90.0])
+    assert trazas["Nacionales"].marker.color == modulo1.theme.COLOR_NACIONAL
+    assert trazas["Extranjeros"].marker.color == modulo1.theme.COLOR_EXTRANJERO
+
+
 # --------------------------------------------------------------- ausencia de datos
 def test_estados_sin_datos_no_dibujan_ceros(df_sub, df_pais):
     vacio = modulo1.preparar(df_sub.iloc[0:0], F)
@@ -231,16 +246,18 @@ def test_estados_sin_datos_no_dibujan_ceros(df_sub, df_pais):
     assert len(modulo1.fig_segmentos(modulo1.preparar(df_sub, F), sin_sub).data) == 0
 
 
-def test_meses_sin_cobertura_quedan_como_hueco_no_como_cero(df_sub):
+def test_meses_sin_cobertura_se_omiten_del_eje_no_como_cero(df_sub):
     df = modulo1.preparar(df_sub, F_NOV)   # sep y oct con dato; nov sin dato
     seg = modulo1.fig_segmentos(df, F_NOV)
     est = modulo1.fig_estadia(df, F_NOV)
-    assert np.isnan(seg.data[0].y[2]) and np.isnan(seg.data[1].y[2])
-    assert np.isnan(est.data[0].y[2]) and est.data[0].connectgaps is False
-    assert _textos_sin_dato(seg) == ["Sin dato"] and _textos_sin_dato(est) == ["Sin dato"]
+    assert list(seg.data[0].x) == ["sep 2025", "oct 2025"]
+    assert list(seg.data[1].x) == ["sep 2025", "oct 2025"]
+    assert list(est.data[0].x) == ["sep 2025", "oct 2025"]
+    assert not _textos_sin_dato(seg) and not _textos_sin_dato(est)
     nac_f = Filtros(mes_ini="2025-09", mes_fin="2025-11", tipo="nacional", subdestino="Coban")
     nac = modulo1.fig_nacionales(modulo1.preparar(df_sub, nac_f, tipo="nacional"), nac_f)
-    assert np.isnan(nac.data[0].y[2]) and _textos_sin_dato(nac) == ["Sin dato"]
+    assert list(nac.data[0].x) == ["sep 2025", "oct 2025"]
+    assert not _textos_sin_dato(nac)
 
 
 # ---------------------------------------------------- integración con main.py

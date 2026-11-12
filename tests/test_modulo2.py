@@ -111,13 +111,14 @@ def test_serie_diaria_rechaza_mezcla_de_series(diaria):
         modulo2.serie_diaria(diaria[diaria["destino_clave"] == AV])   # varios subdestinos y tipos
 
 
-def test_dias_sin_dato_son_huecos_no_ceros(dia_f):
+def test_dias_sin_dato_se_comprimen_sin_convertirse_en_ceros(dia_f):
     fig = modulo2.fig_serie(dia_f, F)
     y = np.asarray(fig.data[0].y, dtype=float)
     assert np.isnan(y[3]) and not (y == 0).any()           # 4 de septiembre: sin fila
     assert fig.data[0].connectgaps is False
-    assert _formas(fig, modulo2.COLOR_SOMBREADO_SIN_DATO)    # tramos grises
-    assert len(_sin_dato(fig)) >= 1                          # tramo largo (oct 21 – nov 30) rotulado
+    cortes = fig.layout.xaxis.rangebreaks[0].values
+    assert "2025-09-04" in cortes and "2025-11-30" in cortes
+    assert not _sin_dato(fig)
 
 
 def test_seleccion_y_sombreado_de_eventos(dia_f):
@@ -217,7 +218,7 @@ def test_grafico_semanal_resalta_fin_de_semana_y_no_inventa_ceros(dia_f):
     assert y_entre[0] == pytest.approx(14.0) and np.isnan(y_entre[5]) and np.isnan(y_entre[6])
     assert y_finde[5] == pytest.approx(40.0) and y_finde[6] == pytest.approx(50.0) and np.isnan(y_finde[0])
     assert entre.marker.color != finde.marker.color
-    assert len(_sin_dato(fig)) == 3                      # miércoles, jueves y viernes sin días regulares
+    assert not _sin_dato(fig)                            # no se rotulan categorías vacías sobre las barras
     assert list(entre.customdata)[:2] == [3, 2]          # días observados disponibles en el hover
     assert "Período: sep 2025 – nov 2025" in fig.layout.title.text
 
@@ -253,10 +254,10 @@ def test_matriz_dia_mes_usa_solo_diaria_y_no_convierte_ausencias_en_cero(dia_f):
 def test_fig_heatmap_orden_cobertura_y_filtros(dia_f, diaria):
     fig = modulo2.fig_heatmap(dia_f, F, "regulares", [])
     assert list(fig.data[0].y) == modulo2.DIAS_ETIQUETA and fig.data[0].y[0] == "Lunes"
-    assert list(fig.data[0].x) == ["sep 2025", "oct 2025", "nov 2025"]
+    assert list(fig.data[0].x) == ["sep 2025", "oct 2025"]
     z = np.asarray(fig.data[0].z, dtype=float)
-    assert np.isnan(z[:, 2]).all() and not (z == 0).any()
-    assert len(_sin_dato(fig)) == 1                            # noviembre
+    assert not np.isnan(z).all(axis=0).any() and not (z == 0).any()
+    assert not _sin_dato(fig)
     assert "Período: sep 2025 – nov 2025" in fig.layout.title.text
     assert modulo2.fig_heatmap(dia_f, F, "eventos", []).layout.annotations[0].text == "Seleccione al menos un evento"
     nac = modulo2.preparar_diaria(diaria, F_NAC)
@@ -340,7 +341,7 @@ def test_observado_y_estimacion_separados_con_estilo_exclusivo(pron):
     assert np.isnan(np.delete(y_est, [4, 5])).all()
     assert estim.line.color == theme.COLOR_ESTIMACION and estim.line.dash == "dash"
     assert obs.line.color == theme.COLOR_OBSERVADO != theme.COLOR_ESTIMACION
-    assert "Estimación" in list(estim.text)
+    assert estim.text is None  # la leyenda y el tooltip identifican la estimación sin tapar la línea
     assert "Estimación: ene 2026 y feb 2026" in fig.layout.title.text
     assert "Período: sep 2025 – ago 2026" in fig.layout.title.text
     assert _sin_dato(fig) == []     # cada mes está observado o estimado
@@ -364,13 +365,13 @@ def test_no_se_suman_subdestinos_en_el_pronostico(pron):
     assert 9999 not in np.asarray(fig.data[0].y, dtype=float)    # el otro destino no entra al observado
 
 
-def test_meses_sin_observacion_ni_estimacion_quedan_como_hueco(pron):
+def test_meses_sin_observacion_ni_estimacion_no_anotan_texto_superpuesto(pron):
     sub = _mensual_sub()
     sub = sub[sub["anio_mes"] != pd.Timestamp("2026-05-01")]
     fig = modulo2.fig_pronostico(_obs(sub=sub), modulo2.datos_pronostico(pron, F), F)
     y_obs = np.asarray(fig.data[0].y, dtype=float)
     assert np.isnan(y_obs[8]) and fig.data[0].connectgaps is False      # mayo 2026 (sep=0 ... may=8)
-    assert len(_sin_dato(fig)) == 1
+    assert len(_sin_dato(fig)) == 0
     assert y_obs[7] == pytest.approx(150.0) and y_obs[9] == pytest.approx(170.0)   # abr y jun siguen observados
 
 

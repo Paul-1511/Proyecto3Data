@@ -165,11 +165,6 @@ def _base(fig: go.Figure, titulo: str, subtitulo: str, altura: int = 380, **kw) 
     return fig
 
 
-def _sin_dato_en_categoria(fig: go.Figure, x: Any, xref: str = "x", yref: str = "paper", y: float = 0.5) -> None:
-    fig.add_annotation(x=x, y=y, xref=xref, yref=yref, text=theme.ETIQUETA_SIN_DATO, textangle=-90,
-                       showarrow=False, font=dict(size=11, color=theme.COLOR_SIN_DATO_TEXTO))
-
-
 def _nota_pie(fig: go.Figure, texto: str, y: float = -0.28) -> None:
     fig.add_annotation(text=texto, xref="paper", yref="paper", x=0, y=y, xanchor="left", yanchor="top",
                        showarrow=False, align="left", font=dict(size=11, color=theme.TEXTO_SECUNDARIO))
@@ -270,9 +265,6 @@ def fig_ocupacion(serie: pd.DataFrame, promedio: Optional[pd.DataFrame], picos: 
                             textfont=dict(size=11, color=theme.TEXTO),
                             customdata=d["anio_mes"].dt.strftime("%Y-%m"),
                             hovertemplate="%{x|%b %Y}<br>" + nombre + ": %{y:.0f} %<extra></extra>")
-    for m in serie.loc[serie["indice_pct"].isna(), "anio_mes"]:
-        fig.add_annotation(x=m, y=0.5, yref="paper", text=theme.ETIQUETA_SIN_DATO, textangle=-90,
-                           showarrow=False, font=dict(size=11, color=theme.COLOR_SIN_DATO_TEXTO))
     _base(fig, titulo, periodo, altura=420, hovermode="x unified",
           yaxis=dict(range=[0, 100], ticksuffix=" %", title=dict(text="Índice de ocupación (%)")),
           xaxis=dict(dtick="M3", tickformat="%b %Y"), legend=dict(orientation="h", y=-0.2))
@@ -295,17 +287,10 @@ def fig_cruce(cruce: pd.DataFrame, subdestino: Optional[str], tipo: Optional[str
     fig.add_bar(x=etiquetas, y=cruce["visitantes"], name="Visitantes (personas)", customdata=claves,
                 marker=dict(color=theme.COLOR_OBSERVADO), row=1, col=1,
                 hovertemplate="%{x}<br>Visitantes: %{y:,.0f}<extra></extra>")
-    fig.add_scatter(x=etiquetas, y=cruce["ocupacion_pct"], mode="lines+markers+text", connectgaps=False,
+    fig.add_scatter(x=etiquetas, y=cruce["ocupacion_pct"], mode="lines+markers", connectgaps=False,
                     name="Ocupación (%)", customdata=claves, row=2, col=1,
                     line=dict(color=COLOR_OCUPACION, width=2.5), marker=dict(size=9),
-                    text=[_fmt(v) + " %" if pd.notna(v) else "" for v in cruce["ocupacion_pct"]],
-                    textposition="top center", textfont=dict(size=11, color=theme.TEXTO),
                     hovertemplate="%{x}<br>Ocupación: %{y:.0f} %<extra></extra>")
-    for et, v, o in zip(etiquetas, cruce["visitantes"], cruce["ocupacion_pct"]):
-        if pd.isna(v):
-            _sin_dato_en_categoria(fig, et, xref="x", yref="y domain")
-        if pd.isna(o):
-            _sin_dato_en_categoria(fig, et, xref="x2", yref="y2 domain")
     _base(fig, titulo, periodo, altura=480, showlegend=False, margin=dict(t=110))
     fig.update_xaxes(type="category", categoryorder="array", categoryarray=etiquetas)
     fig.update_yaxes(title_text="Personas", tickformat=",.0f", rangemode="tozero", row=1, col=1)
@@ -360,9 +345,6 @@ def fig_subdestinos(af: pd.DataFrame, tipo: Optional[str], periodo: str, resalta
         hovertext=[f"{n}<br>Visitantes: {_fmt(v)}<br>Meses con dato: {k}" for n, v, k
                    in zip(af["nombre"], af["visitantes"], af["n_meses"])],
         hovertemplate="%{hovertext}<extra></extra>"))
-    for nombre, v in zip(af["nombre"], af["visitantes"]):
-        if pd.isna(v):
-            _sin_dato_en_categoria(fig, nombre)
     _base(fig, titulo, sub, altura=400, showlegend=False,
           yaxis=dict(title=dict(text="Visitantes únicos por mes (personas)"), tickformat=",.0f",
                      rangemode="tozero"),
@@ -386,14 +368,22 @@ def fig_estacionalidad(ie_ocup: pd.DataFrame, ie_vis: pd.DataFrame, subdestino: 
                         subplot_titles=("Ocupación de Alta Verapaz por año (media del año = 100)",
                                         f"Visitantes de {nombre}, {tipo} · perfil compuesto "
                                         "(media de meses observados = 100)"))
-    colores_anio = {2023: theme.SECUENCIAL[3], 2024: theme.SECUENCIAL[4], 2025: theme.SECUENCIAL[5]}
+    # Tres canales de distinción (tono, trazo y marcador) evitan que los años se
+    # confundan cuando las curvas se cruzan.
+    estilos_anio = {
+        2023: dict(color=theme.CATEGORICOS[2], dash="solid", symbol="circle"),
+        2024: dict(color=theme.CATEGORICOS[1], dash="dash", symbol="square"),
+        2025: dict(color=theme.CATEGORICOS[3], dash="dot", symbol="diamond"),
+    }
     if ie_ocup is not None and len(ie_ocup):
         for anio, d in ie_ocup.groupby("anio"):
             ancho = 3.5 if anio_sel == anio else (1.5 if anio_sel is not None else 2.2)
+            estilo = estilos_anio.get(anio, dict(color=theme.COLOR_OBSERVADO, dash="solid", symbol="circle"))
             fig.add_scatter(x=[MESES_CORTOS[m - 1] for m in d["mes"]], y=d["indice_estacional"],
                             mode="lines+markers", name=f"Ocupación {anio}", row=1, col=1,
-                            line=dict(color=colores_anio.get(anio, theme.COLOR_OBSERVADO), width=ancho),
-                            marker=dict(size=6), customdata=d["indice_pct"],
+                            line=dict(color=estilo["color"], width=ancho, dash=estilo["dash"]),
+                            marker=dict(size=7, color=estilo["color"], symbol=estilo["symbol"]),
+                            customdata=d["indice_pct"],
                             hovertemplate=f"%{{x}} {anio}<br>Índice estacional: %{{y:.0f}}"
                                           "<br>Ocupación: %{customdata:.0f} %<extra></extra>")
     if ie_vis is not None and ie_vis["indice_estacional"].notna().any():
@@ -403,9 +393,6 @@ def fig_estacionalidad(ie_ocup: pd.DataFrame, ie_vis: pd.DataFrame, subdestino: 
                         row=2, col=1, line=dict(color=theme.COLOR_OBSERVADO, width=2.5), marker=dict(size=8),
                         customdata=origen,
                         hovertemplate="%{x} · dato de %{customdata}<br>Índice: %{y:.0f}<extra></extra>")
-        for m, v in zip(ie_vis["mes"], ie_vis["indice_estacional"]):
-            if pd.isna(v):
-                _sin_dato_en_categoria(fig, MESES_CORTOS[m - 1], xref="x2", yref="y2 domain")
     for fila in (1, 2):
         fig.add_hline(y=100, line=dict(color=theme.COLOR_EJE, width=1, dash="dot"), row=fila, col=1)
     _base(fig, titulo, sub, altura=520, margin=dict(t=110, b=80), legend=dict(orientation="h", y=-0.12))
@@ -498,7 +485,9 @@ def texto_seleccion(anio: Optional[int], sub: Optional[str], mes: Optional[str])
 
 # ==================================================================== layout
 def _tarjeta(hijos: list) -> dbc.Card:
-    return dbc.Card(dbc.CardBody(hijos), className="h-100 shadow-sm")
+    # La tarjeta puede incluir una nota posterior a la gráfica. Una altura forzada la hacía
+    # invadir la siguiente sección en pantallas anchas.
+    return dbc.Card(dbc.CardBody(hijos), className="shadow-sm")
 
 
 def _grafico(id_: str) -> dcc.Graph:
@@ -518,6 +507,8 @@ def layout():
         html.P("La oferta y la ocupación son del departamento de Alta Verapaz (el destino Cobán no es el "
                "departamento). La afluencia proviene de telefonía móvil por subdestino.",
                style={"color": theme.TEXTO_SECUNDARIO}),
+        dbc.Alert("Mensaje clave: la ocupación hotelera de Alta Verapaz alcanzó 71 % en diciembre de 2025.",
+                  color="light", className="small py-2"),
         dbc.Alert([
             html.Span(id=ID_SELECCION_TEXTO, className="me-2"),
             dbc.Button("Quitar selección", id=ID_LIMPIAR, size="sm", color="secondary", outline=True,

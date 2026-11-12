@@ -136,7 +136,7 @@ def test_estado_desde_controles_rango_con_huecos(opciones):
     estado, periodo, aviso = main.estado_desde_controles([2, 6], "nacional", "Lanquin", cal, opciones.meses)
     assert estado == {"mes_ini": "2025-11", "mes_fin": "2026-03", "tipo": "nacional", "subdestino": "Lanquin"}
     assert periodo == "Período: nov 2025 – mar 2026"
-    assert "ene 2026" in aviso and "feb 2026" in aviso and "nunca como 0" in aviso
+    assert "ene 2026" in aviso and "feb 2026" in aviso and "interpretan como cero" in aviso
 
 
 def test_estado_desde_controles_sin_huecos(opciones):

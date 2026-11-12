@@ -38,6 +38,11 @@ COLOR_EJE = "#9CA3AF"
 COLOR_OBSERVADO = "#0072B2"
 CATEGORICOS = ("#0072B2", "#009E73", "#56B4E9", "#CC79A7", "#44546A")
 
+# Universos que se comparan en paralelo.  Se mantienen como constantes explícitas
+# para que nunca parezcan una sola serie ni se confundan con una estimación.
+COLOR_EXTRANJERO = "#0072B2"  # azul: visitantes extranjeros
+COLOR_NACIONAL = "#009E73"    # verde: visitantes nacionales (factor de expansión)
+
 # Escala secuencial para volumen (claro = poco, oscuro = mucho). Solo azules.
 SECUENCIAL = ("#EAF2F8", "#C6DBEF", "#9ECAE1", "#6BAED6", "#3182BD", "#08519C")
 ESCALA_VOLUMEN = [[i / (len(SECUENCIAL) - 1), c] for i, c in enumerate(SECUENCIAL)]
