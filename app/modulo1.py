@@ -411,6 +411,8 @@ def layout():
         html.H2("Demanda y mercados", className="h4 mt-3"),
         html.P("Visitantes de Cobán y Alta Verapaz por subdestino. Las cifras siguen el rango de meses, "
                "el tipo de visitante y el subdestino elegidos arriba.", style={"color": theme.TEXTO_SECUNDARIO}),
+        dbc.Alert("Mensaje clave: en Cobán, los visitantes extranjeros promedian 4,548 personas por mes en los 10 meses observados.",
+                  color="light", className="small py-2"),
         dbc.Row([
             dbc.Col(_tarjeta(IDS_KPI[0], "Visitantes promedio por mes",
                              "Media de los visitantes únicos mensuales observados. Dentro de cada mes se suman "

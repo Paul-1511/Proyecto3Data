@@ -507,6 +507,8 @@ def layout():
         html.P("La oferta y la ocupación son del departamento de Alta Verapaz (el destino Cobán no es el "
                "departamento). La afluencia proviene de telefonía móvil por subdestino.",
                style={"color": theme.TEXTO_SECUNDARIO}),
+        dbc.Alert("Mensaje clave: la ocupación hotelera de Alta Verapaz alcanzó 71 % en diciembre de 2025.",
+                  color="light", className="small py-2"),
         dbc.Alert([
             html.Span(id=ID_SELECCION_TEXTO, className="me-2"),
             dbc.Button("Quitar selección", id=ID_LIMPIAR, size="sm", color="secondary", outline=True,

@@ -38,6 +38,16 @@ Alta Verapaz). Las pruebas y el checklist se ajustan solos a los archivos presen
 en contenedor. El tablero solo lee los Parquet de `data/processed/`; los datos originales van en `data/raw/` y el ETL se
 ejecuta como se describe en «Cómo correr el ETL».
 
+### Inicio desde cero
+
+1. Instale y abra [Docker Desktop](https://www.docker.com/products/docker-desktop/). Espere a que indique que el motor está en ejecución.
+2. Clone el repositorio privado y entre a la carpeta: `git clone <URL_DEL_REPOSITORIO> observatorio-inguat` y `cd observatorio-inguat`.
+3. Copie únicamente los archivos institucionales entregados por el curso a `data/raw/`. No los agregue a Git.
+4. Para generar los datos procesados, use Python 3.11: `python3 -m venv .venv`, active el entorno, ejecute `pip install -r requirements.txt` y luego `python -m etl.run_all`.
+5. Levante el tablero con `docker compose up --build` y abra `http://localhost:8050`.
+
+**Problemas frecuentes.** Si aparece “Cannot connect to the Docker daemon”, abra Docker Desktop y espere a que el motor termine de iniciar; después repita `docker compose up --build`. Si falta un Parquet, confirme que ejecutó `python -m etl.run_all` y que los archivos fuente están en `data/raw/`. Si el puerto 8050 está ocupado, detenga la instancia previa con `docker compose down`.
+
 **Ejecución local.**
 
 ```bash
@@ -66,8 +76,8 @@ subdestino) y las cuatro pestañas. Cada pestaña se implementa en `app/modulo1.
 |---|---|---|
 | 1 Demanda y mercados | `app/modulo1.py` | Implementado (P2) |
 | 2 Dinámica y pronóstico | `app/modulo2.py` | Implementado (P2) |
-| 3 Oferta y territorio | `app/modulo3.py` | En construcción (P3) |
-| 4 Reto de Cobán y Alta Verapaz | `app/modulo4.py` | En construcción (P4) |
+| 3 Oferta y territorio | `app/modulo3.py` | Implementado (P3) |
+| 4 Reto de Cobán y Alta Verapaz | `app/modulo4.py` | Implementado (P4) |
 
 Apoyos: `app/theme.py` (paleta y plantilla Plotly), `app/utils/datos.py` (carga y filtros) y `app/utils/metricas.py`
 (indicadores). Cómo agregar un módulo: `HANDOFF_P2.md`; paleta: `docs/paleta.md`; indicadores: `docs/fichas_modulo1_2.md`.

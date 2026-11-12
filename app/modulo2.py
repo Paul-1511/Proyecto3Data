@@ -483,6 +483,8 @@ def layout():
     """Layout estático del módulo; los callbacks lo llenan según el filtro global."""
     return html.Div([
         html.H2("Dinámica temporal, eventos y pronóstico", className="h4 mt-3"),
+        dbc.Alert("Mensaje clave: la validación del pronóstico extranjero de Cobán reporta un MAPE de 19.2 % (leave-one-out, 8 meses).",
+                  color="light", className="small py-2"),
         html.P("Presencia diaria, efecto de eventos, patrón semanal y estimación de ene–feb 2026. La presencia "
                "diaria no equivale a los visitantes únicos mensuales y no se suma para obtenerlos.",
                style={"color": theme.TEXTO_SECUNDARIO}),
