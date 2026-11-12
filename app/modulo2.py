@@ -49,10 +49,8 @@ FUENTE_RESUMEN = "pronostico_resumen_modelo"
 
 MESES_PRONOSTICO = pd.DatetimeIndex(["2026-01-01", "2026-02-01"])
 UMBRAL_MAPE_ALTO = 40.0   # % ; P1 recomienda mostrar el error junto a las series con MAPE > 40 %
-MIN_DIAS_ETIQUETA_SIN_DATO = 7
 
 COLOR_SOMBREADO_EVENTO = "rgba(86, 180, 233, 0.28)"    # CATEGORICOS[2] translúcido
-COLOR_SOMBREADO_SIN_DATO = "rgba(154, 160, 166, 0.22)"  # COLOR_SIN_DATO translúcido
 COLOR_HEATMAP_SIN_DATO = "rgba(154, 160, 166, 0.35)"
 
 MODOS = {"todos": "Todos los días", "regulares": "Solo días regulares",
@@ -175,12 +173,13 @@ def _rect(fig: go.Figure, ini: pd.Timestamp, fin: pd.Timestamp, color: str) -> N
                   x0=(ini - mitad).isoformat(), x1=(fin + mitad).isoformat(), fillcolor=color)
 
 
-def _anotar_sin_dato_categorias(fig: go.Figure, etiquetas: list, faltan) -> None:
-    for etiqueta, falta in zip(etiquetas, faltan):
-        if falta:
-            fig.add_annotation(x=etiqueta, y=0.5, xref="x", yref="paper", text=theme.ETIQUETA_SIN_DATO,
-                               textangle=-90, showarrow=False,
-                               font=dict(size=11, color=theme.COLOR_SIN_DATO_TEXTO))
+def _cortes_sin_dato(serie: pd.Series) -> list[str]:
+    """Fechas sin observación que Plotly debe ocultar del eje temporal.
+
+    La falta sigue representada por una interrupción de la línea (``connectgaps=False``),
+    pero no consume una franja enorme del gráfico ni necesita un rótulo sobrepuesto.
+    """
+    return [pd.Timestamp(fecha).strftime("%Y-%m-%d") for fecha in serie.index[serie.isna()]]
 
 
 def _base(fig: go.Figure, titulo: str, subtitulo: str, altura: int = 380, **kw) -> go.Figure:
@@ -223,14 +222,11 @@ def fig_serie(df: pd.DataFrame, f: Filtros, eventos: Optional[Sequence] = None) 
             fig.add_annotation(x=(t_ini + (t_fin - t_ini) / 2).isoformat(), xref="x", y=1, yref="paper",
                                text=evento, showarrow=False, yanchor="bottom",
                                font=dict(size=10, color=theme.TEXTO_SECUNDARIO))
-    for t_ini, t_fin in _tramos(serie.index[serie.isna()]):   # días sin dato
-        _rect(fig, t_ini, t_fin, COLOR_SOMBREADO_SIN_DATO)
-        if (t_fin - t_ini).days + 1 >= MIN_DIAS_ETIQUETA_SIN_DATO:
-            fig.add_annotation(x=(t_ini + (t_fin - t_ini) / 2).isoformat(), xref="x", y=0.5, yref="paper",
-                               text=theme.ETIQUETA_SIN_DATO, showarrow=False,
-                               font=dict(size=12, color=theme.COLOR_SIN_DATO_TEXTO))
+    # Se comprimen los días sin cobertura, sin inventar valores ni unir los tramos observados.
+    cortes = _cortes_sin_dato(serie)
     _base(fig, titulo, sub, yaxis=dict(title=dict(text="Personas presentes por día")),
-          xaxis=dict(type="date"), hovermode="x unified")
+          xaxis=dict(type="date", rangebreaks=[dict(values=cortes, dvalue=86_400_000)] if cortes else []),
+          hovermode="x unified")
     return fig
 
 
@@ -319,7 +315,6 @@ def fig_semanal(df: pd.DataFrame, f: Filtros, modo: str = "regulares",
                     hovertemplate="%{x}<br>Presencia media: %{y:,.1f}<br>Días observados: %{customdata}<extra></extra>")
     _base(fig, titulo, sub, barmode="overlay", yaxis=dict(title=dict(text="Presencia media por día")))
     fig.update_xaxes(categoryorder="array", categoryarray=DIAS_ETIQUETA)
-    _anotar_sin_dato_categorias(fig, DIAS_ETIQUETA, patron["presencia_media"].isna().to_numpy())
     return fig
 
 
@@ -354,6 +349,10 @@ def fig_heatmap(df: pd.DataFrame, f: Filtros, modo: str = "regulares",
     z, n = resultado
     if z.size == 0 or np.isnan(z).all():
         return theme.figura_sin_dato(titulo, sub)
+    # Quita del eje los meses completamente vacíos. Las celdas parciales siguen siendo NaN,
+    # no ceros, y se explican en el tooltip cuando existen.
+    con_dato = ~np.isnan(z).all(axis=0)
+    z, n, meses = z[:, con_dato], n[:, con_dato], meses[con_dato]
     etiquetas = [theme.etiqueta_mes(m) for m in meses]
     fig = go.Figure(go.Heatmap(
         z=z, x=etiquetas, y=DIAS_ETIQUETA, customdata=n, colorscale=theme.ESCALA_VOLUMEN, hoverongaps=False,
@@ -362,7 +361,6 @@ def fig_heatmap(df: pd.DataFrame, f: Filtros, modo: str = "regulares",
     _base(fig, titulo, sub, plot_bgcolor=COLOR_HEATMAP_SIN_DATO)   # celdas sin dato = gris
     fig.update_yaxes(autorange="reversed", categoryorder="array", categoryarray=DIAS_ETIQUETA)
     fig.update_xaxes(type="category", categoryorder="array", categoryarray=etiquetas)
-    _anotar_sin_dato_categorias(fig, etiquetas, np.isnan(z).all(axis=0))
     return fig
 
 
@@ -410,17 +408,14 @@ def fig_pronostico(obs: pd.Series, est: pd.DataFrame, f: Filtros) -> go.Figure:
                                  name="Intervalo ≈ ±1.96×RMSE (orientativo)", hoverinfo="skip",
                                  connectgaps=False))
         fig.add_trace(go.Scatter(
-            x=etiquetas, y=est_y, mode="lines+markers+text", connectgaps=False,
+            x=etiquetas, y=est_y, mode="lines+markers", connectgaps=False,
             name=theme.rotulo_estimacion(), line=estilo["line"],
             marker=dict(color=theme.COLOR_ESTIMACION, symbol="diamond", size=10),
-            text=[theme.rotulo_estimacion() if not np.isnan(v) else "" for v in est_y],
-            textposition="top center", textfont=dict(color=theme.COLOR_ESTIMACION_TEXTO),
             customdata=np.column_stack([e["lim_inf"].to_numpy(dtype=float), e["lim_sup"].to_numpy(dtype=float)]),
             hovertemplate="%{x}<br>Estimación: %{y:,.0f}<br>Intervalo: %{customdata[0]:,.0f} – "
                           "%{customdata[1]:,.0f}<extra></extra>"))
     _base(fig, titulo, sub, yaxis=dict(rangemode="tozero", title=dict(text="Visitantes únicos del mes")))
     fig.update_xaxes(type="category", categoryorder="array", categoryarray=etiquetas)
-    _anotar_sin_dato_categorias(fig, etiquetas, np.isnan(obs_y) & np.isnan(est_y))
     return fig
 
 
@@ -448,6 +443,9 @@ def aviso_pronostico(est: pd.DataFrame, resumen: pd.DataFrame, f: Filtros) -> li
         return [dbc.Alert(f"Sin estimación disponible para esta serie ({theme.ETIQUETA_SIN_DATO}).", color="light")]
     r = est.iloc[0]
     nota = r["nota"] if "nota" in est.columns and pd.notna(r["nota"]) else ""
+    # El archivo de pronóstico puede incluir el mismo rótulo que ya encabeza el aviso.
+    # Se evita repetirlo sin perder la advertencia metodológica que sigue.
+    nota = str(nota).removeprefix(f"{theme.rotulo_estimacion()} (no observada). ")
     avisos = [dbc.Alert([html.Strong(f"{theme.rotulo_estimacion()} (no observada). "),
                          f"Método: variante «{r['metodo']}» (factor de reparto × entradas migratorias del mes). {nota}"],
                         color="light", className="small")]
@@ -473,13 +471,12 @@ def aviso_pronostico(est: pd.DataFrame, resumen: pd.DataFrame, f: Filtros) -> li
 def _leyenda() -> html.Div:
     def chip(color, texto):
         return html.Span([html.Span("■ ", style={"color": color}), texto], className="me-3")
-    return html.Div([chip(theme.COLOR_OBSERVADO, "Observado"), chip(theme.COLOR_ESTIMACION, "Estimación"),
-                     chip(theme.COLOR_SIN_DATO, "Sin dato")],
+    return html.Div([chip(theme.COLOR_OBSERVADO, "Observado"), chip(theme.COLOR_ESTIMACION, "Estimación")],
                     className="small mb-2", style={"color": theme.TEXTO_SECUNDARIO})
 
 
 def _grafico(id_: str) -> dbc.Card:
-    return dbc.Card(dbc.CardBody(dcc.Graph(id=id_, config=_CONFIG_GRAFICO)), className="h-100 shadow-sm")
+    return dbc.Card(dbc.CardBody(dcc.Graph(id=id_, config=_CONFIG_GRAFICO)), className="shadow-sm")
 
 
 def layout():

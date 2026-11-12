@@ -160,8 +160,8 @@ def estado_desde_controles(rango: Any, tipo: Optional[str], subdestino: Optional
     huecos = meses_sin_cobertura(ini, fin, observados)
     aviso = ""
     if huecos:
-        aviso = ("Sin dato de movilidad en: " + ", ".join(theme.etiqueta_mes(m) for m in huecos)
-                 + ". Se muestran como «Sin dato», nunca como 0.")
+        aviso = ("Sin cobertura de movilidad en: " + ", ".join(theme.etiqueta_mes(m) for m in huecos)
+                 + ". No se grafican ni se interpretan como cero.")
     return filtros.a_dict(), theme.subtitulo_periodo(ini, fin), aviso
 
 
@@ -300,8 +300,8 @@ def construir_layout(opciones: Opciones, inicial: Filtros, contenidos: Sequence)
             dbc.Tabs([dbc.Tab(contenido, label=m.etiqueta, tab_id=m.id) for m, contenido in contenidos],
                      id=ID_TABS, active_tab=contenidos[0][0].id),
             html.Hr(),
-            html.P("Ausencia de dato no es cero: los períodos sin cobertura se muestran como «Sin dato». "
-                   "Toda cifra estimada se rotula «Estimación».", className="small",
+            html.P("Ausencia de dato no es cero: los períodos sin cobertura se omiten o se dejan como hueco, "
+                   "nunca se interpretan como cero. Toda cifra estimada se rotula «Estimación».", className="small",
                    style={"color": theme.TEXTO_SECUNDARIO}),
         ], fluid=True),
     ], style={"backgroundColor": theme.FONDO_PAGINA, "minHeight": "100vh", "color": theme.TEXTO,

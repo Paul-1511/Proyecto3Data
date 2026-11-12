@@ -7,8 +7,8 @@ el prefijo ``m1-``.
 Qué responde a qué
 * Tarjetas KPI, «Turista vs. excursionista» y «Estadía por mes»: siguen el filtro global
   (rango de meses, tipo y subdestino).
-* Ranking de mercados extranjeros y panel de nacionales: cada uno muestra SU universo
-  (extranjero / nacional) para el subdestino y los meses del filtro; no se mezclan ni se suman.
+* Ranking de mercados extranjeros y comparativa mensual por tipo: cada visual conserva SU universo
+  (extranjero / nacional); se pueden ver juntos, pero nunca se mezclan ni se suman.
 * Clic en una barra del ranking -> ``m1-seleccion`` -> «Turista vs. excursionista» y «Estadía por
   mes» pasan a mostrar solo ese mercado (si el tipo global es extranjero). La selección se borra
   al cambiar cualquier filtro global o con el botón «Quitar selección».
@@ -23,7 +23,7 @@ Decisiones metodológicas
   nulos se excluyen. Nunca se suman visitantes entre meses.
 * Nacionales: la fuente no trae una desagregación fiable de nacionalidades nacionales, por lo que
   se muestran como un solo universo (serie mensual del subdestino).
-* Ausencia de dato: meses sin cobertura aparecen con la anotación «Sin dato», nunca como 0.
+* Ausencia de dato: los meses sin cobertura se excluyen del eje; nunca se dibujan como 0.
 * Sin descargas ni tablas de microdatos.
 """
 from __future__ import annotations
@@ -237,15 +237,6 @@ def _meses_rango(df: pd.DataFrame, f: Filtros) -> pd.DatetimeIndex:
     return datos.rango_meses(ini, fin)
 
 
-def _anotar_sin_dato(fig: go.Figure, etiquetas: list, faltan) -> None:
-    """Rotula «Sin dato» sobre los meses sin cobertura (el eje conserva el mes, sin barra ni punto)."""
-    for etiqueta, falta in zip(etiquetas, faltan):
-        if falta:
-            fig.add_annotation(x=etiqueta, y=0.5, xref="x", yref="paper", text=theme.ETIQUETA_SIN_DATO,
-                               textangle=-90, showarrow=False,
-                               font=dict(size=11, color=theme.COLOR_SIN_DATO_TEXTO))
-
-
 def _eje_meses(fig: go.Figure, etiquetas: list) -> None:
     fig.update_xaxes(type="category", categoryorder="array", categoryarray=etiquetas)
 
@@ -267,7 +258,10 @@ def fig_segmentos(df: pd.DataFrame, f: Filtros, mercado: Optional[str] = None) -
     cols = ["prop_mas_de_1_dia", "prop_menos_de_1_dia"]
     if props[cols].isna().all().all():
         return theme.figura_sin_dato(titulo, sub)
-    etiquetas = [theme.etiqueta_mes(m) for m in meses]
+    # Los meses sin los dos segmentos no se llevan al eje: no son ceros y tampoco
+    # deben crear huecos visuales o rótulos verticales que compitan con la gráfica.
+    props = props.dropna(subset=cols, how="any")
+    etiquetas = [theme.etiqueta_mes(m) for m in props["anio_mes"]]
     fig = go.Figure()
     for col, nombre, color in (("prop_mas_de_1_dia", "Más de 1 día", theme.COLOR_OBSERVADO),
                                ("prop_menos_de_1_dia", "Menos de 1 día", theme.CATEGORICOS[2])):
@@ -276,7 +270,6 @@ def fig_segmentos(df: pd.DataFrame, f: Filtros, mercado: Optional[str] = None) -
     _base(fig, titulo, sub, barmode="stack",
           yaxis=dict(range=[0, 100], ticksuffix=" %", title=dict(text="% de visitantes del mes")))
     _eje_meses(fig, etiquetas)
-    _anotar_sin_dato(fig, etiquetas, props[cols].isna().all(axis=1))
     return fig
 
 
@@ -287,17 +280,17 @@ def fig_estadia(df: pd.DataFrame, f: Filtros, mercado: Optional[str] = None) -> 
     if not serie_completa(f) or df.empty:
         return theme.figura_sin_dato(titulo, sub)
     meses = _meses_rango(df, f)
-    valores = [metricas.estadia_ponderada(df[df["anio_mes"] == m]) for m in meses]
-    if not len(valores) or all(pd.isna(v) for v in valores):
+    valores = pd.Series({m: metricas.estadia_ponderada(df[df["anio_mes"] == m]) for m in meses})
+    valores = valores.dropna()
+    if valores.empty:
         return theme.figura_sin_dato(titulo, sub)
-    etiquetas = [theme.etiqueta_mes(m) for m in meses]
-    fig = go.Figure(go.Scatter(x=etiquetas, y=valores, mode="lines+markers", connectgaps=False,
+    etiquetas = [theme.etiqueta_mes(m) for m in valores.index]
+    fig = go.Figure(go.Scatter(x=etiquetas, y=valores.to_numpy(), mode="lines+markers", connectgaps=False,
                                line=dict(color=theme.COLOR_OBSERVADO, width=2.5), name="Estadía media",
                                hovertemplate="%{x}<br>%{y:.2f} días<extra></extra>"))
     _base(fig, titulo, sub, showlegend=False,
           yaxis=dict(rangemode="tozero", title=dict(text="Días (Σ días-persona ÷ Σ visitantes)")))
     _eje_meses(fig, etiquetas)
-    _anotar_sin_dato(fig, etiquetas, [pd.isna(v) for v in valores])
     return fig
 
 
@@ -321,26 +314,60 @@ def fig_ranking(rank: pd.DataFrame, f: Filtros, seleccionado: Optional[str] = No
     return fig
 
 
-def fig_nacionales(df: pd.DataFrame, f: Filtros) -> go.Figure:
-    """Visitantes nacionales por mes del subdestino (universo separado; sin desagregar por origen)."""
-    titulo = "Visitantes nacionales por mes"
-    if f.subdestino is None or df.empty:
-        return theme.figura_sin_dato(titulo, _subtitulo(f, FUENTE_SUB, tipo="nacional"))
-    prom = metricas.promedio_mensual_visitantes(df)
-    extra = (f"promedio mensual {prom.promedio:,.0f} ({prom.n_meses} meses)" if prom.n_meses else None)
-    sub = _subtitulo(f, FUENTE_SUB, tipo="nacional", extra=extra)
-    mensual = visitantes_mensuales(df)
-    meses = _meses_rango(df, f)
-    if len(mensual) == 0 or len(meses) == 0:
+def fig_visitantes_por_tipo(df_extranjeros: pd.DataFrame, df_nacionales: pd.DataFrame,
+                            f: Filtros) -> go.Figure:
+    """Comparación mensual de universos sin sumarlos, con una escala por tipo.
+
+    Los nacionales son cifras expandidas de telefonía y tienen otra magnitud; por eso el eje
+    izquierdo corresponde solo a nacionales y el derecho solo a extranjeros. La leyenda permite
+    ocultar cualquiera de las dos series.
+    """
+    titulo = "Visitantes por mes: nacionales y extranjeros"
+    sub = _subtitulo(f, FUENTE_SUB, extra="Comparación por tipo; no se suman")
+    if f.subdestino is None:
         return theme.figura_sin_dato(titulo, sub)
-    serie = mensual.reindex(meses)
+
+    series = {}
+    for nombre, df in (("Nacionales", df_nacionales), ("Extranjeros", df_extranjeros)):
+        if not df.empty:
+            serie = visitantes_mensuales(df).dropna()
+            if not serie.empty:
+                series[nombre] = serie
+    if not series:
+        return theme.figura_sin_dato(titulo, sub)
+
+    meses = pd.DatetimeIndex(sorted(set().union(*(serie.index for serie in series.values()))))
     etiquetas = [theme.etiqueta_mes(m) for m in meses]
-    fig = go.Figure(go.Bar(x=etiquetas, y=serie.to_numpy(), marker_color=theme.CATEGORICOS[1],
-                           name="Nacionales", hovertemplate="%{x}<br>%{y:,.0f} visitantes<extra></extra>"))
-    _base(fig, titulo, sub, showlegend=False, yaxis=dict(title=dict(text="Visitantes únicos del mes")))
+    fig = go.Figure()
+    estilos = {
+        "Nacionales": (theme.COLOR_NACIONAL, "y", "Visitantes nacionales (expandidos)"),
+        "Extranjeros": (theme.COLOR_EXTRANJERO, "y2", "Visitantes extranjeros"),
+    }
+    for nombre in ("Nacionales", "Extranjeros"):
+        if nombre not in series:
+            continue
+        color, eje, _ = estilos[nombre]
+        valores = series[nombre].reindex(meses).to_numpy(dtype=float)
+        if nombre == "Nacionales":
+            fig.add_bar(x=etiquetas, y=valores, name=nombre, yaxis=eje, marker_color=color,
+                        hovertemplate=f"%{{x}}<br>{nombre}: %{{y:,.0f}} visitantes<extra></extra>")
+        else:
+            fig.add_scatter(x=etiquetas, y=valores, name=nombre, yaxis=eje, mode="lines+markers",
+                            line=dict(color=color, width=2.5), marker=dict(color=color, size=7),
+                            hovertemplate=f"%{{x}}<br>{nombre}: %{{y:,.0f}} visitantes<extra></extra>")
+    _base(fig, titulo, sub, hovermode="x unified",
+          yaxis=dict(title=dict(text=estilos["Nacionales"][2]), showgrid=True),
+          yaxis2=dict(title=dict(text=estilos["Extranjeros"][2]), overlaying="y", side="right",
+                      showgrid=False, zeroline=False),
+          legend=dict(orientation="h", yanchor="top", y=-0.22, x=0,
+                      title=dict(text="Seleccione las series a mostrar:")))
     _eje_meses(fig, etiquetas)
-    _anotar_sin_dato(fig, etiquetas, serie.isna().to_numpy())
     return fig
+
+
+def fig_nacionales(df: pd.DataFrame, f: Filtros) -> go.Figure:
+    """Compatibilidad para consumidores previos: gráfica mensual solo de nacionales."""
+    return fig_visitantes_por_tipo(pd.DataFrame(), df, f)
 
 
 def texto_seleccion(seleccion: Optional[str], f: Filtros) -> str:
@@ -372,7 +399,9 @@ def _tarjeta(id_base: str, titulo: str, ayuda: str) -> dbc.Card:
 
 
 def _grafico(id_: str) -> dbc.Card:
-    return dbc.Card(dbc.CardBody(dcc.Graph(id=id_, config=_CONFIG_GRAFICO)), className="h-100 shadow-sm")
+    # No usar h-100: algunas columnas incluyen texto después de la gráfica y una altura
+    # forzada hacía que ese texto invadiera la fila siguiente.
+    return dbc.Card(dbc.CardBody(dcc.Graph(id=id_, config=_CONFIG_GRAFICO)), className="shadow-sm")
 
 
 def layout():
@@ -413,12 +442,13 @@ def layout():
             dbc.Col([
                 _grafico(ID_G_NACIONALES),
                 dbc.Alert("Los visitantes nacionales provienen de telefonía móvil con factor de expansión: "
-                          "son cifras expandidas, no conteos directos. Se muestran aparte de los extranjeros "
-                          "y no se desagregan por origen.", color="light", className="small mt-2 mb-0"),
+                          "son cifras expandidas, no conteos directos. Use la leyenda para ver ambos universos "
+                          "a la vez o por separado; las escalas están separadas y nunca se suman.",
+                          color="light", className="small mt-2 mb-0"),
             ], xs=12, lg=5, className="mb-3"),
         ]),
         html.P("Notas: el ranking promedia solo los meses en que cada mercado tiene dato; no suma meses y excluye "
-               "«sin_dato». Los meses sin cobertura aparecen como «Sin dato», nunca como cero. "
+               "«sin_dato». Los meses sin cobertura se omiten del eje, nunca se muestran como cero. "
                "«Más de 1 día» y «menos de 1 día» son los segmentos de la fuente.",
                className="small", style={"color": theme.TEXTO_SECUNDARIO}),
     ])
@@ -472,4 +502,6 @@ def registrar_callbacks(app) -> None:
     @app.callback(Output(ID_G_NACIONALES, "figure"), Input(ID_STORE_FILTROS, "data"))
     def _nacionales(estado):
         f = Filtros.desde_dict(estado)
-        return fig_nacionales(preparar(_leer_sub(), f, tipo="nacional"), f)
+        base = _leer_sub()
+        return fig_visitantes_por_tipo(preparar(base, f, tipo="extranjero"),
+                                       preparar(base, f, tipo="nacional"), f)
